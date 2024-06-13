@@ -51,8 +51,12 @@ def generate_launch_description():
 	    	('/submap_list', '/submap_slices'),
 	   	('/map', '/map'),
 	   	('/scan', '/scan'),
-	    ]),
-	     
+	    ],
+	    arguments=['-configuration_directory', LaunchConfiguration('cartographer_config_dir', default=os.path.join(
+                                                  ld08_cartographer_prefix, 'config')), '-configuration_basename', LaunchConfiguration('configuration_basename',
+                                                 default='ld08_lds_2d.lua')],
+            ),
+                                                 
         Node(
             package='cartographer_ros',
             executable='cartographer_occupancy_grid_node',
