@@ -29,10 +29,4 @@ def generate_launch_description():
             executable='ld08_driver',
             name='ld08_driver',
             output='screen'),
-        Node(
-	    package='rviz2',
-	    executable='rviz2',
-            name='rviz2',
-            output='screen',
-            arguments=['-d', 'ld08_driver/rviz/ld08_cartographer.rviz'])
     ])
