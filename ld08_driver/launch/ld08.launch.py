@@ -34,5 +34,5 @@ def generate_launch_description():
 	    executable='rviz2',
             name='rviz2',
             output='screen',
-            arguments=['-d', 'ld08_driver/rviz/lidar_mapping.rviz'])
+            arguments=['-d', 'ld08_driver/rviz/ld08_cartographer.rviz'])
     ])
