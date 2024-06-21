@@ -275,14 +275,17 @@ class mpu6050(Node):
         angle_x = int(math.degrees(math.atan2(accel_data["x"], accel_data["z"])))
         angle_y = int(math.degrees(math.atan2(accel_data["y"], accel_data["z"])))
 
-        # Print angles to terminal
-        self.get_logger().info(f'angle_x: {angle_x}, angle_y: {angle_y}, gyro_x: {gyro_data["x"]}, gyro_y: {gyro_data["y"]}, gyro_z: {gyro_data["z"]}')
-
         # Assuming MPU6050 doesn't provide orientation, setting it to identity quaternion
         msg.orientation = Quaternion()
         msg.orientation.w = 1.0
-
-        self.publisher.publish(msg)
+        
+        thresold_angle = 5.0
+        if (abs(angle_x) < thresold_angle or abs(angle_y) < thresold_angle):
+            self.publisher.publish(msg)
+            # Print angles to terminal
+            self.get_logger().info(f'angle_x: {angle_x}, angle_y: {angle_y}, gyro_x: {gyro_data["x"]}, gyro_y: {gyro_data["y"]}, gyro_z: {gyro_data["z"]}')
+        else:
+            self.get_logger().info("Robot is not horizontal. Mapping is disabled.")
         
     def run(self):
         rclpy.spin(self)
