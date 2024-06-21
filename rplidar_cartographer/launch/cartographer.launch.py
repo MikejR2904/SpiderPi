@@ -33,6 +33,13 @@ def generate_launch_description():
             {'angle_compensate': True}
         ]
     )
+    
+    imu_node = Node(
+        package='spiderpi',
+        executable='mpu6050_modified.py',
+        name='mp6050_modified',
+        output='screen',
+    )
 
     # Cartographer node
     cartographer_node = Node(
@@ -53,13 +60,23 @@ def generate_launch_description():
     	output='screen',
     	arguments=['-resolution', '0.05']
     )
-
+    
+    tf2_node = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='imu_base_link_broadcaster',
+        output='screen',
+        arguments=['0', '0', '0', '0', '0', '0', 'imu_link', 'base_link', '100'],
+    )
+    
     # Create the launch description and populate
     ld = LaunchDescription()
 
     ld.add_action(robot_state_publisher_node)
     ld.add_action(rplidar_node)
+    ld.add_action(imu_node)
     ld.add_action(cartographer_node)
     ld.add_action(cartographer_occupancy_grid_node)
-
+    ld.add_action(tf2_node)
+    
     return ld
