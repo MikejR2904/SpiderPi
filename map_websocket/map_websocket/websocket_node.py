@@ -42,6 +42,40 @@ class WebSocketNode(Node):
             self.get_logger().error("Unknown robot type. Cannot set up publisher and subscriptions.")
             return
         
+        # Connect to WebSocket server
+        asyncio.get_event_loop().run_until_complete(self.connect_to_websocket())
+
+    async def connect_to_websocket(self):
+        try:
+            async with websockets.connect(self.uri) as websocket:
+                self.websocket = websocket
+                self.get_logger().info(f"Connected to WebSocket server: {self.uri}")
+                # Start listening for messages from WebSocket server
+                await self.receive_from_server()
+        except websockets.exceptions.ConnectionClosed as e:
+            self.get_logger().warning(f"WebSocket connection closed: {str(e)}")
+        except Exception as e:
+            self.get_logger().error(f"WebSocket connection error: {str(e)}")
+
+    async def receive_from_server(self):
+        async for message in self.websocket:
+            try:
+                data = json.loads(message)
+                if 'occupancy_grid' in data:
+                    # Convert received data to OccupancyGrid message
+                    occupancy_grid = self.convert_to_occupancy_grid(data['occupancy_grid'])
+                    # Publish occupancy_grid to ROS topic
+                    await self.publish_map(occupancy_grid)
+            except json.JSONDecodeError as e:
+                self.get_logger().error(f"JSON decoding error: {str(e)}")
+            except Exception as e:
+                self.get_logger().error(f"Error handling WebSocket message: {str(e)}")
+
+    async def publish_map(self, occupancy_grid):
+        if self.publisher:
+            await self.publisher.publish(occupancy_grid)
+            self.get_logger().info(f"Published map data to {self.TOPIC_MAP[self.robot_type]['map_publisher']}")
+
     async def map_callback(self, msg):
         try:
             # Convert OccupancyGrid message to JSON or any other suitable format
@@ -93,8 +127,8 @@ class WebSocketNode(Node):
         
     async def send_data_to_server(self, data):
         try:
-            async with websockets.connect(self.uri) as websocket:
-                await websocket.send(data)
+            if self.websocket:
+                await self.websocket.send(data)
                 self.get_logger().info(f"Data sent over WebSocket: {data}")
         except websockets.exceptions.ConnectionClosed as e:
             self.get_logger().warning(f"WebSocket connection closed: {str(e)}")
@@ -113,7 +147,6 @@ def main(args=None):
         raise RuntimeError("Unknown hostname. Cannot determine robot type.")
     
     websocket_node = WebSocketNode(robot_type)
-    asyncio.get_event_loop().run_until_complete(websocket_node.send_data_to_server(f'Hi from {robot_type}}!')) 
     rclpy.spin(websocket_node)  # Use rclpy.spin() if you have other nodes to spin
     rclpy.shutdown()
 
