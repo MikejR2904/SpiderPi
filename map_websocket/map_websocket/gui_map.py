@@ -61,6 +61,11 @@ class Occupy(Node):
             self.command_callback_spiderpi,
             10)
         self.subscription_spiderpi_command  # prevent unused variable warning
+        
+        # Initialize variables for storing map images
+        self.spiderpi_map_image = None
+        self.turtlebot_map_image = None
+
 
     def listener_callback_turtlebot(self, msg):
         self.process_map(msg, 'turtlebot')
@@ -91,7 +96,7 @@ class Occupy(Node):
             # find transform to obtain base_link coordinates in the map frame
             # lookup_transform(target_frame, source_frame, time)
             try:
-                trans = self.tfBuffer.lookup_transform('map', 'base_link', self.get_clock().now())
+                trans = self.tfBuffer.lookup_transform(f'{robot_type}_map', 'base_link', self.get_clock().now())
             except (LookupException, ConnectivityException, ExtrapolationException) as e:
                 self.get_logger().info(f'No transformation found for {robot_type}')
                 return
@@ -151,11 +156,11 @@ class Occupy(Node):
             # rotate by 90 degrees so that the forward direction is at the top of the image
             rotated = img_transformed.rotate(np.degrees(yaw) - 90, expand=True, fillcolor=map_bg_color)
 
-            # Show the image using grayscale map
-            plt.imshow(rotated, cmap='gray', origin='lower')
-            plt.draw_all()
-            # Pause to make sure the plot gets created
-            plt.pause(0.00000000001)
+            # Store the generated image based on robot_type
+            if robot_type == 'turtlebot':
+                self.turtlebot_map_image = rotated
+            elif robot_type == 'spiderpi':
+                self.spiderpi_map_image = rotated
 
         except Exception as e:
             self.get_logger().error(f"Error processing map for {robot_type}: {str(e)}")
@@ -181,6 +186,12 @@ class Occupy(Node):
         yaw_z = math.atan2(t3, t4)
 
         return roll_x, pitch_y, yaw_z
+    
+    def get_spiderpi_map_image(self):
+        return self.spiderpi_map_image
+
+    def get_turtlebot_map_image(self):
+        return self.turtlebot_map_image
 
 
 class MainWindow(QMainWindow):
@@ -227,13 +238,36 @@ class MainWindow(QMainWindow):
     def createTimer(self):
         return self.occupy_node.create_timer(1.0, self.update_gui_commands)
 
-    def update_gui_commands(self):
+    def update_gui(self):
+        self.update_map_labels()
+        self.update_command_labels()
+
+    def update_map_labels(self):
+        # Update map labels based on latest data from Occupy node
+        spiderpi_map_image = self.occupy_node.get_spiderpi_map_image()
+        turtlebot_map_image = self.occupy_node.get_turtlebot_map_image()
+        
+        if spiderpi_map_image:
+            self.spiderpi_label.setPixmap(QPixmap.fromImage(self.convert_image_to_qimage(spiderpi_map_image)))
+        if turtlebot_map_image:
+            self.turtlebot_label.setPixmap(QPixmap.fromImage(self.convert_image_to_qimage(turtlebot_map_image)))
+
+    def update_command_labels(self):
+        # Update command labels with latest command data
         global spiderpi_last_command, turtlebot_last_command
         
         if spiderpi_last_command:
             self.spiderpi_command_label.setText(f"Spiderpi Command: {spiderpi_last_command}")
         if turtlebot_last_command:
             self.turtlebot_command_label.setText(f"Turtlebot Command: {turtlebot_last_command}")
+
+    def convert_image_to_qimage(self, image):
+        # Convert PIL Image to QImage
+        if image.mode == 'RGB':
+            qimage = QImage(image.tobytes('raw', 'RGB'), image.size[0], image.size[1], QImage.Format_RGB888)
+        else:
+            qimage = QImage(image.tobytes('raw', 'L'), image.size[0], image.size[1], QImage.Format_Grayscale8)
+        return qimage
 
     def closeEvent(self, event):
         # Shutdown ROS when the application is closed
