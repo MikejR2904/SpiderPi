@@ -14,7 +14,10 @@ setup(
     install_requires=['setuptools', 
     'rclpy',
     'websockets',
-    'ament_python'],
+    'socket',
+    'ament_python',
+    'pyqt5',
+    'Pillow'],
     zip_safe=True,
     maintainer='idp',
     maintainer_email='e1129809@u.nus.edu',
@@ -25,6 +28,8 @@ setup(
         'console_scripts': [
         	'websocket_publisher_node = map_websocket.websocket_publisher_node:main',
         	'websocket_client_node = map_websocket.websocket_client_node:main',
+        	'gui_map = map_websocket.gui_map:main',
+        	'websocket_node = map_websocket.websocket_node:main',
         ],
     },
 )
