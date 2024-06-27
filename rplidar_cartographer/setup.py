@@ -10,7 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/cartographer.launch.py', 'launch/visualization.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/cartographer.launch.py', 'launch/visualization.launch.py', 'launch/occupancy_grid.launch.py']),
         ('share/' + package_name + '/config', ['config/rplidar_a1.lua']),
         ('share/' + package_name + '/rviz', ['rviz/rplidar.rviz']),
         ('share/' + package_name + '/urdf', ['urdf/head_2d.urdf']),
