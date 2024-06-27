@@ -64,7 +64,7 @@ class mpu6050(Node):
 
     def __init__(self, address, bus=1):
         super().__init__('mpu6050_node')
-        self.publisher = self.create_publisher(Imu, 'imu/data', queue_size=10)
+        self.publisher = self.create_publisher(Imu, 'imu', 10)
         self.address = address
         self.bus = smbus.SMBus(bus)
         # Wake up the MPU-6050 since it starts in sleep mode
@@ -289,8 +289,8 @@ class mpu6050(Node):
         
     def run(self):
         rclpy.spin(self)
-    
-if __name__ == "__main__":
+
+def main(args = None):
     try:
         rclpy.init()
         mpu = mpu6050(0x68)
@@ -310,3 +310,6 @@ if __name__ == "__main__":
         if rclpy.ok():
             mpy.destroy_node()
             rclpy.shut_down()
+            
+if __name__ == "__main__":
+    main()
