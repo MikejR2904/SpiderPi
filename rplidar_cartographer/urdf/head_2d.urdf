@@ -16,6 +16,12 @@
       <material name="gray" />
     </visual>
   </link>
+  
+  <link name="imu_link">
+    <visual>
+      <origin xyz="0 0 0" />
+    </visual>
+  </link>
 
   <link name="base_link">
     <visual>
@@ -32,5 +38,21 @@
     <child link="laser" />
     <origin rpy="0 0 3.1415926" xyz="0 0 0.05" />
   </joint>
+  
+  <link name="imu_link">
+    	<visual>
+        	<geometry>
+        	    <box size="0.05 0.05 0.05" />
+        	</geometry>
+        	<origin xyz="0 0 0" rpy="0 0 0" />
+        	<material name="blue" />
+    	</visual>
+    </link>
+    
+    <joint name="imu_joint" type="fixed">
+    	<parent link="base_link"/>
+    	<child link="imu_link"/>
+    	<origin xyz="0.1 0.1 0.1" rpy="0 0 0"/>
+    </joint>
 
 </robot>
