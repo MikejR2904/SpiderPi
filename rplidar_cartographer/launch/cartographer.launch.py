@@ -75,7 +75,7 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='laser_map_broadcaster',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'laser'],
+            arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'laser'],
     	),
     	
         Node(
