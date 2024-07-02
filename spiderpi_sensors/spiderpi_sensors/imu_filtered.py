@@ -7,6 +7,8 @@ from filterpy.kalman import KalmanFilter
 from scipy.linalg import expm
 import math
 
+"More about Kalman Filter here : https://nitinjsanket.github.io/tutorials/attitudeest/kf"
+
 class IMUKalmanFilter(Node):
     def __init__(self):
         super().__init__('imu_kalman_filter')

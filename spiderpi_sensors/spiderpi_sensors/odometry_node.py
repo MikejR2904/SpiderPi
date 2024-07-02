@@ -50,15 +50,27 @@ class ImuOdometryNode(Node):
         # Broadcast TF transform (optional)
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
-        t.header.frame_id = 'odom'
-        t.child_frame_id = 'base_link'
-        t.transform.translation.x = 0.0  # Replace with your estimated position
-        t.transform.translation.y = 0.0
-        t.transform.translation.z = 0.0
+        t.header.frame_id = 'map'
+        t.child_frame_id = 'odom'
+        # Integrate velocity to update position in the TF transform
+        if self.prev_time is None:
+            self.prev_time = msg.header.stamp.to_sec()
+            return
+
+        dt = msg.header.stamp.to_sec() - self.prev_time
+        self.prev_time = msg.header.stamp.to_sec()
+
+        # Integrate linear velocity to get position
+        t.transform.translation.x += velocity[0, 0] * dt
+        t.transform.translation.y += velocity[1, 0] * dt
+        t.transform.translation.z += velocity[2, 0] * dt
+
+        # Set orientation in the TF transform
         t.transform.rotation.x = orientation[0, 0]
         t.transform.rotation.y = orientation[1, 0]
         t.transform.rotation.z = orientation[2, 0]
         t.transform.rotation.w = 1.0  # Assuming no rotation around base_link's Z-axis
+
         self.broadcaster.sendTransform(t)
 
 def main(args=None):
