@@ -67,7 +67,7 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='laser_base_link_broadcaster',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'map', 'base_link'],
+            arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
     	),
     	
     	Node(
