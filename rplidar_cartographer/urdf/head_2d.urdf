@@ -57,5 +57,23 @@
     <child link="imu_link"/>
     <origin xyz="0.1 0.1 0.1" rpy="0 0 0"/>
   </joint>
+  
+  <!-- Define the odom link -->
+  <link name="odom">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.1" />
+      </geometry>
+      <origin xyz="0 0 0" />
+      <material name="gray" />
+    </visual>
+  </link>
+
+  <!-- Define the joint between base_link and odom -->
+  <joint name="odom_joint" type="fixed">
+    <parent link="odom"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
 
 </robot>
