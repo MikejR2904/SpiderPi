@@ -41,7 +41,7 @@ class IMUKalmanFilter(Node):
                          msg.angular_velocity.y,
                          msg.angular_velocity.z])
 
-        # Check if the robot is stationary (implement your own logic)
+        # Check if the robot is stationary
         self.detect_stationary(acc)
 
         # Apply ZUPT: Update accelerometer bias during stationary period
@@ -55,11 +55,12 @@ class IMUKalmanFilter(Node):
 
         # Time integration using gyroscope readings (complementary filter)
         if self.prev_time is None:
-            self.prev_time = msg.header.stamp.to_sec()
+            self.prev_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             return
 
-        dt = msg.header.stamp.to_sec() - self.prev_time
-        self.prev_time = msg.header.stamp.to_sec()
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        dt = current_time - self.prev_time
+        self.prev_time = current_time
 
         # Complementary Filter: Orientation estimation
         self.update_orientation(gyro, dt)
@@ -126,7 +127,7 @@ class IMUKalmanFilter(Node):
         self.kf.update(z)
         
         # Extract orientation and angular velocity estimates from Kalman filter
-        self.orientation = self.kf.x[:3].reshape((3, 1))
+        self.orientation = self.kf.x[:3]
         self.angular_velocity = self.kf.x[3:6]
         
         # Estimate velocity using orientation and accelerometer

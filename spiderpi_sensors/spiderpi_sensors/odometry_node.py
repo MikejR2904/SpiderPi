@@ -5,7 +5,7 @@ from nav_msgs.msg import Odometry
 from tf2_ros import TransformBroadcaster, TransformStamped
 from tf2_geometry_msgs import PoseStamped
 import math
-from imu_filtered import IMUKalmanFilter
+from spiderpi_sensors.imu_filtered import IMUKalmanFilter
 
 class ImuOdometryNode(Node):
     def __init__(self):
@@ -14,6 +14,9 @@ class ImuOdometryNode(Node):
         self.imu_sub = self.create_subscription(Imu, '/imu', self.imu_callback, 10)
         self.broadcaster = TransformBroadcaster(self)
         self.kalman_filter = IMUKalmanFilter()
+        self.position = [0.0, 0.0, 0.0]  # Initial position in /map frame
+        self.prev_time = None
+
 
     def imu_callback(self, msg):
         # Update Kalman Filter with new IMU data
@@ -38,9 +41,9 @@ class ImuOdometryNode(Node):
         odom_msg.pose.pose.orientation.z = orientation[2, 0]
         odom_msg.pose.pose.orientation.w = 1.0  # Assuming no rotation around base_link's Z-axis
         # Set twist (if available)
-        odom_msg.twist.twist.linear.x = velocity[0, 0]  # Replace with your estimated linear velocity
-        odom_msg.twist.twist.linear.y = velocity[1, 0]
-        odom_msg.twist.twist.linear.z = velocity[2, 0]
+        odom_msg.twist.twist.linear.x = velocity[0]  # Replace with your estimated linear velocity
+        odom_msg.twist.twist.linear.y = velocity[1]
+        odom_msg.twist.twist.linear.z = velocity[2]
         odom_msg.twist.twist.angular.x = 0.0
         odom_msg.twist.twist.angular.y = 0.0
         odom_msg.twist.twist.angular.z = angular_velocity[2]
@@ -54,16 +57,17 @@ class ImuOdometryNode(Node):
         t.child_frame_id = 'odom'
         # Integrate velocity to update position in the TF transform
         if self.prev_time is None:
-            self.prev_time = msg.header.stamp.to_sec()
+            self.prev_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
             return
 
-        dt = msg.header.stamp.to_sec() - self.prev_time
-        self.prev_time = msg.header.stamp.to_sec()
-
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        dt = current_time - self.prev_time
+        self.prev_time = current_time
+        
         # Integrate linear velocity to get position
-        t.transform.translation.x += velocity[0, 0] * dt
-        t.transform.translation.y += velocity[1, 0] * dt
-        t.transform.translation.z += velocity[2, 0] * dt
+        t.transform.translation.x += velocity[0] * dt
+        t.transform.translation.y += velocity[1] * dt
+        t.transform.translation.z += velocity[2] * dt
 
         # Set orientation in the TF transform
         t.transform.rotation.x = orientation[0, 0]
