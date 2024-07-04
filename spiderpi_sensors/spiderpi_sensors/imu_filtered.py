@@ -127,7 +127,12 @@ class IMUKalmanFilter(Node):
         self.kf.update(z)
         
         # Extract orientation and angular velocity estimates from Kalman filter
-        self.orientation = self.kf.x[:3]
+        roll = self.kf.x[0]
+        pitch = self.kf.x[1]
+        yaw = self.kf.x[2]
+        # Convert Euler angles to rotation matrix or quaternion as needed
+        self.orientation = self.euler_to_rotation_matrix(roll, pitch, yaw)
+
         self.angular_velocity = self.kf.x[3:6]
         
         # Estimate velocity using orientation and accelerometer
@@ -154,3 +159,32 @@ class IMUKalmanFilter(Node):
         yaw_z = math.atan2(t3, t4)
 
         return roll_x, pitch_y, yaw_z
+    
+    def euler_to_rotation_matrix(self, roll, pitch, yaw):
+        """Convert Euler angles (roll, pitch, yaw) to a 3x3 rotation matrix."""
+        R_x = np.array([[1, 0, 0],
+                        [0, math.cos(roll), -math.sin(roll)],
+                        [0, math.sin(roll), math.cos(roll)]])
+    
+        R_y = np.array([[math.cos(pitch), 0, math.sin(pitch)],
+                        [0, 1, 0],
+                        [-math.sin(pitch), 0, math.cos(pitch)]])
+    
+        R_z = np.array([[math.cos(yaw), -math.sin(yaw), 0],
+                        [math.sin(yaw), math.cos(yaw), 0],
+                        [0, 0, 1]])
+
+        # Combined rotation matrix
+        R = np.dot(R_z, np.dot(R_y, R_x))
+        return R
+    
+    
+def main(args=None):
+    rclpy.init(args=args)
+    node = IMUKalmanFilter()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
