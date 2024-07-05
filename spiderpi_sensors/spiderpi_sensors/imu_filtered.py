@@ -7,7 +7,7 @@ from filterpy.kalman import KalmanFilter
 from scipy.linalg import expm
 import math
 
-"More about Kalman Filter here : https://nitinjsanket.github.io/tutorials/attitudeest/kf"
+"More about Kalman Filter here : https://nitinjsanket.github.io/tutorials/attitudeest/kf and https://www.researchgate.net/publication/319622210_Fixed-Gain_Augmented-State_Tracking-Filters"
 
 class IMUKalmanFilter(Node):
     def __init__(self):
@@ -46,12 +46,13 @@ class IMUKalmanFilter(Node):
 
         # Apply ZUPT: Update accelerometer bias during stationary period
         if self.is_stationary:
+            self.velocity = np.zeros(3)
             self.bias = 0.99 * self.bias + 0.01 * acc
 
             # Correct accelerometer readings
             acc_corrected = acc - self.bias
         else:
-            acc_corrected = acc
+            acc_corrected = acc - self.estimate_gravity_orientation(acc)
 
         # Time integration using gyroscope readings (complementary filter)
         if self.prev_time is None:
@@ -90,7 +91,7 @@ class IMUKalmanFilter(Node):
     def detect_stationary(self, acc) -> None:
         # Example: Simple threshold-based stationary detection based on acceleration magnitude
         acc_magnitude = np.linalg.norm(acc)
-        if acc_magnitude < 0.1:  # Adjust threshold as per your application
+        if acc_magnitude < 10:  # Adjust threshold as per your application
             self.is_stationary = True
         else:
             self.is_stationary = False
@@ -117,7 +118,7 @@ class IMUKalmanFilter(Node):
         self.kf.H = np.eye(6)
 
         # Process noise covariance (Q)
-        self.kf.Q = np.diag([0.01, 0.01, 0.01, 0.001, 0.001, 0.001])
+        self.kf.Q = np.diag([0.0001, 0.0001, 0.0001, 0.00001, 0.00001, 0.00001])
 
         # Predict step
         self.kf.predict(u=gyro)
@@ -137,6 +138,12 @@ class IMUKalmanFilter(Node):
         
         # Estimate velocity using orientation and accelerometer
         self.velocity = np.dot(self.orientation.T, acc_corrected)
+        
+    def estimate_gravity_orientation(self, acc):
+        # Estimate the gravitational component from accelerometer readings
+        gravity_magnitude = np.linalg.norm(acc)
+        gravity_direction = acc / gravity_magnitude
+        return gravity_direction * 9.81
 
     def euler_from_quaternion(self, x, y, z, w):
         """
