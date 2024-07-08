@@ -64,7 +64,7 @@ class IMUFilterNode(Node):
             if self.is_zupt:
                 velocity = {'x': 0.0, 'y': 0.0, 'z': 0.0}  # Zero velocity during ZUPT
             else:
-                velocity = self.calculate_velocity(accel_data)
+                velocity = self.calculate_velocity(accel_data, dt)
                 self.kalman_filter.predict(acceleration=accel_data, dt=dt)
         else:
             velocity = {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -112,11 +112,8 @@ class IMUFilterNode(Node):
 
         return Quaternion(w=qw, x=qx, y=qy, z=qz)
 
-    def calculate_velocity(self, accel_data):
+    def calculate_velocity(self, accel_data, dt):
         accel_data = np.array([[accel_data['x']], [accel_data['y']], [accel_data['z']]])
-        # Calculate time difference
-        current_timestamp = self.get_clock().now().to_msg().sec + self.get_clock().now().to_msg().nanosec * 1e-9
-        dt = current_timestamp - self.last_timestamp
 
         # Acceleration in global frame (assuming no rotation)
         accel_global = accel_data
@@ -127,7 +124,6 @@ class IMUFilterNode(Node):
         velocity = self.kalman_filter.update(accel_global, self.last_acceleration, dt)
 
         # Update variables for next iteration
-        self.last_timestamp = current_timestamp
         self.last_acceleration = accel_global
 
         return velocity
