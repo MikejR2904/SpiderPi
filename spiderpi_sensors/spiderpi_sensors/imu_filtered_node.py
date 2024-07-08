@@ -115,6 +115,8 @@ class IMUFilterNode(Node):
 
         # Acceleration in global frame (assuming no rotation)
         accel_global = accel_data
+        
+        self.kalman_filter.predict(accel_data, dt)
 
         # Apply Kalman filter to estimate velocity
         velocity = self.kalman_filter.update(accel_global, self.last_acceleration, dt)
