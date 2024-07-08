@@ -4,8 +4,8 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import Quaternion, Vector3
 import math
-from complementary_filter import ComplementaryFilter
-from kalman_filter import KalmanFilter
+from spiderpi_sensors.complementary_filter import ComplementaryFilter
+from spiderpi_sensors.kalman_filter import KalmanFilter
 
 class IMUFilterNode(Node):
     def __init__(self):
@@ -68,7 +68,7 @@ class IMUFilterNode(Node):
         else:
             velocity = {'x': 0.0, 'y': 0.0, 'z': 0.0}
             
-        print(velocity)
+        self.get_logger().info(f'Estimated velocity is vx : {velocity['x']}, vy : {velocity['y']}, vz : {velocity['z']}')
 
         # Populate Imu message
         filtered_imu_msg = Imu()
@@ -85,11 +85,7 @@ class IMUFilterNode(Node):
         filtered_imu_msg.angular_velocity.x = gyro_data['x']
         filtered_imu_msg.angular_velocity.y = gyro_data['y']
         filtered_imu_msg.angular_velocity.z = gyro_data['z']
-
-        filtered_imu_msg.linear_velocity.x = velocity['x']
-        filtered_imu_msg.linear_velocity.y = velocity['y']
-        filtered_imu_msg.linear_velocity.z = velocity['z']
-
+        
         # Publish filtered Imu message
         self.publisher.publish(filtered_imu_msg)
 
