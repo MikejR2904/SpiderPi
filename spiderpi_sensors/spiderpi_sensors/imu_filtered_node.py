@@ -69,7 +69,10 @@ class IMUFilterNode(Node):
             velocity = {'x': 0.0, 'y': 0.0, 'z': 0.0}
             
         self.get_logger().info(f'Estimated velocity is vx : {velocity['x']}, vy : {velocity['y']}, vz : {velocity['z']}')
-
+        
+        # Update last timestamp
+        self.last_timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        
         # Populate Imu message
         filtered_imu_msg = Imu()
         filtered_imu_msg.header = Header()
