@@ -69,7 +69,7 @@ class IMUFilterNode(Node):
         else:
             velocity = {'x': 0.0, 'y': 0.0, 'z': 0.0}
             
-        self.get_logger().info(f'Estimated velocity is vx : {velocity['x']}, vy : {velocity['y']}, vz : {velocity['z']}')
+        self.get_logger().info(f'Estimated velocity is : {velocity}')
         
         # Update last timestamp
         self.last_timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
@@ -119,7 +119,7 @@ class IMUFilterNode(Node):
         accel_global = accel_data
         
         self.kalman_filter.predict(accel_data, dt)
-
+        
         # Apply Kalman filter to estimate velocity
         velocity = self.kalman_filter.update(accel_global, self.last_acceleration, dt)
 
