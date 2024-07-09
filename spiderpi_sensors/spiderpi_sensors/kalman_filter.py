@@ -17,7 +17,7 @@ class KalmanFilter():
         self.P = np.dot(A, np.dot(self.P, A.T)) + self.Q
         
     def update(self, measurement: dict) -> dict:
-    	measurement = np.array([[measurement['x'], [measurement['y'], measurement['z']])
+    	measurement = np.array([[measurement['x']], [measurement['y']], [measurement['z']]])
         IM = np.dot(self.H, self.X)
         IS = self.R + np.dot(self.H, np.dot(self.P, self.H.T))
         K = np.dot(self.P, np.dot(self.H.T, np.linalg.inv(IS)))
