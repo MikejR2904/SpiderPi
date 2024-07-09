@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
-from geometry_msgs.msg import Quaternion, Vector3
+from geometry_msgs.msg import Quaternion, Vector3, Twist
 import math
 import numpy as np
 from spiderpi_sensors.complementary_filter import ComplementaryFilter
@@ -11,7 +11,10 @@ from spiderpi_sensors.kalman_filter import KalmanFilter
 class IMUFilterNode(Node):
     def __init__(self):
         super().__init__('imu_filter_node')
-        self.publisher = self.create_publisher(Imu, '/filtered_imu', 10)
+        self.publisher = self.create_publisher(Twist, '/filtered_velocity', 10)
+        self.orientation_pub = self.create_publisher(Vector3, '/estimated_orientation', 10)
+        self.angular_velocity_pub = self.create_publisher(Vector3, '/estimated_angular_velocity', 10)
+        self.linear_velocity_pub = self.create_publisher(Vector3, '/estimated_linear_velocity', 10)
         self.subscription = self.create_subscription(Imu, '/imu', self.imu_callback, 10)
         self.subscription  # prevent unused variable warning
 
@@ -90,24 +93,30 @@ class IMUFilterNode(Node):
         # Update last timestamp
         self.last_timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
         
-        # Populate Imu message
-        filtered_imu_msg = Imu()
-        filtered_imu_msg.header = Header()
-        filtered_imu_msg.header.stamp = self.get_clock().now().to_msg()
-        filtered_imu_msg.header.frame_id = 'imu_link'
-
-        filtered_imu_msg.orientation = quaternion
-
-        filtered_imu_msg.linear_acceleration.x = accel_data['x']
-        filtered_imu_msg.linear_acceleration.y = accel_data['y']
-        filtered_imu_msg.linear_acceleration.z = accel_data['z']
-
-        filtered_imu_msg.angular_velocity.x = gyro_data['x']
-        filtered_imu_msg.angular_velocity.y = gyro_data['y']
-        filtered_imu_msg.angular_velocity.z = gyro_data['z']
+        # Populate Twist message
+        twist_msg = Twist()
+        twist_msg.linear.x = velocity['x']
+        twist_msg.linear.y = velocity['y']
+        twist_msg.linear.z = velocity['z']
+        self.publisher.publish(twist_msg)
         
-        # Publish filtered Imu message
-        self.publisher.publish(filtered_imu_msg)
+        orientation_msg = Vector3()
+        orientation_msg.x = orientation_angles[0]
+        orientation_msg.y = orientation_angles[1]
+        orientation_msg.z = orientation_angles[2]
+        self.orientation_pub.publish(orientation_msg)
+        
+        angular_velocity_msg = Vector3()
+        angular_velocity_msg.x = gyro_data['x']
+        angular_velocity_msg.y = gyro_data['y']
+        angular_velocity_msg.z = gyro_data['z']
+        self.angular_velocity_pub.publish(angular_velocity_msg)
+        
+        linear_velocity_msg = Vector3()
+        linear_velocity_msg.x = velocity['x']
+        linear_velocity_msg.y = velocity['y']
+        linear_velocity_msg.z = velocity['z']
+        self.linear_velocity_pub.publish(linear_velocity_msg)
 
     def angle_to_quaternion(self, angles):
         roll = angles[0]
