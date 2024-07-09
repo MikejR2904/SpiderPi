@@ -40,7 +40,7 @@ class IMUFilterNode(Node):
         orientation_angles = self.complementary_filter.update(accel=accel_data, gyro=gyro_data, dt=dt)
         
         # Convert degrees to radians
-	roll = np.radians(orientation_angles[0])
+        roll = np.radians(orientation_angles[0])
         pitch = np.radians(orientation_angles[1])
         yaw = np.radians(orientation_angles[2])
         
@@ -51,7 +51,6 @@ class IMUFilterNode(Node):
         
         # Combine rotation matrices to get XYZ Euler Angles
         R = np.dot(R_z, np.dot(R_y, R_x))
-        
         g_global = np.array([0, 0, self.gravity])
         g_local = np.dot(R, g_global)
         
