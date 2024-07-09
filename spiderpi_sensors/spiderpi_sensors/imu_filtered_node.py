@@ -39,10 +39,26 @@ class IMUFilterNode(Node):
         dt = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9 - self.last_timestamp if self.last_timestamp else 0.0
         orientation_angles = self.complementary_filter.update(accel=accel_data, gyro=gyro_data, dt=dt)
         
+        # Convert degrees to radians
+	roll = np.radians(orientation_angles[0])
+        pitch = np.radians(orientation_angles[1])
+        yaw = np.radians(orientation_angles[2])
+        
+        # Compute rotation matrices
+        R_x = np.array([[1, 0, 0], [0, np.cos(roll), -np.sin(roll)], [0, np.sin(roll), np.cos(roll)]])
+        R_y = np.array([[np.cos(pitch), 0, np.sin(pitch)], [0, 1, 0], [-np.sin(pitch), 0, np.cos(pitch)]])
+        R_z = np.array([[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]])
+        
+        # Combine rotation matrices to get XYZ Euler Angles
+        R = np.dot(R_z, np.dot(R_y, R_x))
+        
+        g_global = np.array([0, 0, self.gravity])
+        g_local = np.dot(R, g_global)
+        
         # Remove gravity components from measurement
-        gravity_x = self.gravity * np.sin(orientation_angles[1])
-        gravity_y = -self.gravity * np.sin(orientation_angles[0])
-        gravity_z = self.gravity * np.cos(orientation_angles[0]) * np.cos(orientation_angles[1])
+        gravity_x = g_local[0]
+        gravity_y = g_local[1]
+        gravity_z = g_local[2]
         
         corrected_acc_x = accel_data['x'] - gravity_x
         corrected_acc_y = accel_data['y'] - gravity_y
