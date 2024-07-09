@@ -17,6 +17,8 @@ class KalmanFilter():
         self.P = np.dot(A, np.dot(self.P, A.T)) + self.Q
         
     def update(self, measurement):
+    	if isinstance(measurement, dict):
+    		measurement = np.array([[measurement['x'], [measurement['y'], measurement['z']])
         IM = np.dot(self.H, self.X)
         IS = self.R + np.dot(self.H, np.dot(self.P, self.H.T))
         K = np.dot(self.P, np.dot(self.H.T, np.linalg.inv(IS)))
@@ -24,5 +26,7 @@ class KalmanFilter():
         self.X = self.X + np.dot(K, (measurement - IM))
         self.P = self.P - np.dot(K, np.dot(IS, K.T))
         
+        return self.get_velocity()
+        
     def get_velocity(self):
-        return self.X
+        return {'x': self.X[0][0], 'y': self.X[1][0], 'z': self.X[2][0]}

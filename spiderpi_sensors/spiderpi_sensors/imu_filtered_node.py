@@ -4,6 +4,7 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import Quaternion, Vector3
 import math
+import numpy as np
 from spiderpi_sensors.complementary_filter import ComplementaryFilter
 from spiderpi_sensors.kalman_filter import KalmanFilter
 
@@ -39,9 +40,9 @@ class IMUFilterNode(Node):
         orientation_angles = self.complementary_filter.update(accel=accel_data, gyro=gyro_data, dt=dt)
         
         # Remove gravity components from measurement
-        gravity_x = self.gravity * math.sin(orientation_angles[1])
-        gravity_y = -self.gravity * math.sin(orientation_angles[0])
-        gravity_z = self.gravity * math.cos(orientation_angles[0]) * math.cos(orientation_angles[1])
+        gravity_x = self.gravity * np.sin(orientation_angles[1])
+        gravity_y = -self.gravity * np.sin(orientation_angles[0])
+        gravity_z = self.gravity * np.cos(orientation_angles[0]) * np.cos(orientation_angles[1])
         
         corrected_acc_x = accel_data['x'] - gravity_x
         corrected_acc_y = accel_data['y'] - gravity_y
@@ -113,15 +114,13 @@ class IMUFilterNode(Node):
         return Quaternion(w=qw, x=qx, y=qy, z=qz)
 
     def calculate_velocity(self, accel_data, dt):
-        accel_data = np.array([[accel_data['x']], [accel_data['y']], [accel_data['z']]])
-
         # Acceleration in global frame (assuming no rotation)
         accel_global = accel_data
         
         self.kalman_filter.predict(accel_data, dt)
         
         # Apply Kalman filter to estimate velocity
-        velocity = self.kalman_filter.update(accel_global, self.last_acceleration, dt)
+        velocity = self.kalman_filter.update(accel_global)
 
         # Update variables for next iteration
         self.last_acceleration = accel_global
