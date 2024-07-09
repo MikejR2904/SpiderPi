@@ -24,6 +24,8 @@ setup(
         	'imu_node = spiderpi_sensors.imu_node:main',
         	'odometry_node = spiderpi_sensors.odometry_node:main',
         	'imu_filtered = spiderpi_sensors.imu_filtered:main',
+        	'imu_filtered_node = spiderpi_sensors.imu_filtered_node:main',
+        	'odometry_filtered_node = spiderpi_sensors.odometry_filtered_node:main',
         ],
     },
 )
