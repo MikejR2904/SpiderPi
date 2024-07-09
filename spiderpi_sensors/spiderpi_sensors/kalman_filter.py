@@ -11,7 +11,7 @@ class KalmanFilter():
         
     def predict(self, acceleration: dict, dt: float) -> None:
         A = np.array([[1, dt, 0], [0, 1, dt], [0, 0, 1]])
-        B = np.array([[0.5*dt**2], [dt], [1]])
+        B = np.array([[0, 0, 0.5*dt**2], [0, 0, dt], [0, 0, 1]])
         acceleration = np.array([[acceleration['x']], [acceleration['y']], [acceleration['z']]])
         self.X = np.dot(A, self.X) + np.dot(B, acceleration)
         self.P = np.dot(A, np.dot(self.P, A.T)) + self.Q
