@@ -9,16 +9,15 @@ class KalmanFilter():
         self.R = np.eye(3) * 0.1
         self.H = np.eye(3)
         
-    def predict(self, acceleration, dt):
+    def predict(self, acceleration: dict, dt: float) -> None:
         A = np.array([[1, dt, 0], [0, 1, dt], [0, 0, 1]])
         B = np.array([[0.5*dt**2], [dt], [1]])
         acceleration = np.array([[acceleration['x']], [acceleration['y']], [acceleration['z']]])
         self.X = np.dot(A, self.X) + np.dot(B, acceleration)
         self.P = np.dot(A, np.dot(self.P, A.T)) + self.Q
         
-    def update(self, measurement):
-    	if isinstance(measurement, dict):
-    		measurement = np.array([[measurement['x'], [measurement['y'], measurement['z']])
+    def update(self, measurement: dict) -> dict:
+    	measurement = np.array([[measurement['x'], [measurement['y'], measurement['z']])
         IM = np.dot(self.H, self.X)
         IS = self.R + np.dot(self.H, np.dot(self.P, self.H.T))
         K = np.dot(self.P, np.dot(self.H.T, np.linalg.inv(IS)))
