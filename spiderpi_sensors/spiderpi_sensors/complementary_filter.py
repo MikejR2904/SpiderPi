@@ -7,7 +7,7 @@ class ComplementaryFilter():
         self.last_time = None
         
     def update(self, accel : dict, gyro : dict, dt : float) -> np.ndarray:
-        accel_angle = np.array([np.arctan2(accel['y'], accel['z']), np.arctan2(-accel['x'], np.sqrt(accel['x']**2 + accel['z']**2)), 0.0])
+        accel_angle = np.array([np.arctan2(accel['y'], np.sqrt(accel['x']**2+accel['z']**2)), np.arctan2(-accel['x'], np.sqrt(accel['y']**2 + accel['z']**2)), 0.0])
         
         if self.last_time is None:
             self.angle[:] = accel_angle
