@@ -3,8 +3,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import Quaternion, Vector3, Twist
-import math
 import numpy as np
+from queue import Queue
+from threading import Thread, Lock
+import time
 from spiderpi_sensors.complementary_filter import ComplementaryFilter
 from spiderpi_sensors.kalman_filter import KalmanFilter
 
@@ -32,11 +34,27 @@ class IMUFilterNode(Node):
         # ZUPT parameters
         self.zupt_threshold = 0.1  # Adjust this threshold as per your application
         self.is_zupt = False
+        
+        # Gyro calibration offsets
+        self.gyroXcal = 0.0
+        self.gyroYcal = 0.0
+        self.gyroZcal = 0.0
+        
+        # Queue for storing IMU data
+        self.imu_data_queue = Queue()
+        self.queue_lock = Lock()
+
+        # Call the gyro calibration method
+        Thread(target=self.calibrate_gyroscope, args=(100,)).start()
 
     def imu_callback(self, msg):
+    	# Put IMU message into the queue
+        with self.queue_lock:
+            self.imu_data_queue.put(msg)
+    	
         # Extract raw accelerometer and gyroscope data from Imu message
         accel_data = {'x': msg.linear_acceleration.x, 'y': msg.linear_acceleration.y, 'z': msg.linear_acceleration.z}
-        gyro_data = {'x': msg.angular_velocity.x, 'y': msg.angular_velocity.y, 'z': msg.angular_velocity.z}
+        gyro_data = {'x': msg.angular_velocity.x - self.gyroXcal, 'y': msg.angular_velocity.y - self.gyroYcal, 'z': msg.angular_velocity.z - self.gyroZcal}
 
         # Use complementary filter to estimate orientation
         dt = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9 - self.last_timestamp if self.last_timestamp else 0.0
@@ -150,6 +168,44 @@ class IMUFilterNode(Node):
         self.last_acceleration = accel_global
 
         return velocity
+        
+    def calibrate_gyroscope(self, N: int) -> None:
+        # Display message
+        self.get_logger().info(f"Calibrating gyro with {N} points. Do not move!")
+
+        count = 0
+        while count < N:
+        	try:
+        		with self.queue_lock:
+        			msg = self.imu_data_queue.get(timeout=1.0)  # Timeout in seconds
+        		gyro_data = {'x': msg.angular_velocity.x, 'y': msg.angular_velocity.y, 'z': msg.angular_velocity.z}
+        	
+        		self.gyroXcal += gyro_data['x']
+        		self.gyroYcal += gyro_data['y']
+        		self.gyroZcal += gyro_data['z']
+        		
+        		count += 1
+        	except Queue.Empty:
+        		self.get_logger().warn("IMU data queue empty. Calibration interrupted.")
+        		break
+        		
+        if count > 0:
+        	# Calculate average offset value
+        	self.gyroXcal /= count
+        	self.gyroYcal /= count
+        	self.gyroZcal /= count
+
+        	# Display calibration results
+        	self.get_logger().info("Calibration complete")
+        	self.get_logger().info(f"\tX axis offset: {round(self.gyroXcal, 1)}")
+        	self.get_logger().info(f"\tY axis offset: {round(self.gyroYcal, 1)}")
+        	self.get_logger().info(f"\tZ axis offset: {round(self.gyroZcal, 1)}\n")
+        	
+        else:
+        	self.get_logger().warn("No IMU data received for calibration.")
+        	
+        time.sleep(2)
+
 
 def main(args=None):
     rclpy.init(args=args)
