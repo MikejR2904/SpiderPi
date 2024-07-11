@@ -4,7 +4,7 @@ from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from geometry_msgs.msg import Quaternion, Vector3, Twist
 import numpy as np
-from queue import Queue
+from queue import Queue, Empty
 from threading import Thread, Lock
 import time
 from spiderpi_sensors.complementary_filter import ComplementaryFilter
@@ -39,6 +39,7 @@ class IMUFilterNode(Node):
         self.gyroXcal = 0.0
         self.gyroYcal = 0.0
         self.gyroZcal = 0.0
+        self.count = 0
         
         # Queue for storing IMU data
         self.imu_data_queue = Queue()
@@ -51,6 +52,9 @@ class IMUFilterNode(Node):
     	# Put IMU message into the queue
         with self.queue_lock:
             self.imu_data_queue.put(msg)
+            
+        if self.count < 100:
+            return
     	
         # Extract raw accelerometer and gyroscope data from Imu message
         accel_data = {'x': msg.linear_acceleration.x, 'y': msg.linear_acceleration.y, 'z': msg.linear_acceleration.z}
@@ -172,9 +176,7 @@ class IMUFilterNode(Node):
     def calibrate_gyroscope(self, N: int) -> None:
         # Display message
         self.get_logger().info(f"Calibrating gyro with {N} points. Do not move!")
-
-        count = 0
-        while count < N:
+        while self.count < N:
         	try:
         		with self.queue_lock:
         			msg = self.imu_data_queue.get(timeout=1.0)  # Timeout in seconds
@@ -184,16 +186,19 @@ class IMUFilterNode(Node):
         		self.gyroYcal += gyro_data['y']
         		self.gyroZcal += gyro_data['z']
         		
-        		count += 1
-        	except Queue.Empty:
+        		self.count += 1
+        	except Empty:
         		self.get_logger().warn("IMU data queue empty. Calibration interrupted.")
-        		break
+        		time.sleep(0.01)
+            except Exception as e:
+                self.get_logger().error("An error occured. Calibration interrupted.")
+                break
         		
-        if count > 0:
+        if self.count > 0:
         	# Calculate average offset value
-        	self.gyroXcal /= count
-        	self.gyroYcal /= count
-        	self.gyroZcal /= count
+        	self.gyroXcal /= self.count
+        	self.gyroYcal /= self.count
+        	self.gyroZcal /= self.count
 
         	# Display calibration results
         	self.get_logger().info("Calibration complete")
