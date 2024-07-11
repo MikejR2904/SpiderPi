@@ -177,19 +177,20 @@ class IMUFilterNode(Node):
         # Display message
         self.get_logger().info(f"Calibrating gyro with {N} points. Do not move!")
         while self.count < N:
-        	try:
-        		with self.queue_lock:
-        			msg = self.imu_data_queue.get(timeout=1.0)  # Timeout in seconds
-        		gyro_data = {'x': msg.angular_velocity.x, 'y': msg.angular_velocity.y, 'z': msg.angular_velocity.z}
-        	
-        		self.gyroXcal += gyro_data['x']
-        		self.gyroYcal += gyro_data['y']
-        		self.gyroZcal += gyro_data['z']
-        		
-        		self.count += 1
-        	except Empty:
-        		self.get_logger().warn("IMU data queue empty. Calibration interrupted.")
-        		time.sleep(0.01)
+            try:
+                with self.queue_lock:
+                    msg = self.imu_data_queue.get(timeout=1.0)  # Timeout in seconds
+                    
+                gyro_data = {'x': msg.angular_velocity.x, 'y': msg.angular_velocity.y, 'z': msg.angular_velocity.z}
+                
+                self.gyroXcal += gyro_data['x']
+                self.gyroYcal += gyro_data['y']
+                self.gyroZcal += gyro_data['z']
+                
+                self.count += 1
+            except Empty:
+                self.get_logger().warn("IMU data queue empty. Calibration interrupted.")
+                time.sleep(0.01)
             except Exception as e:
                 self.get_logger().error("An error occured. Calibration interrupted.")
                 break
