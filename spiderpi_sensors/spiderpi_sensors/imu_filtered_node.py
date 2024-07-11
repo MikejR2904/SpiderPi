@@ -9,6 +9,7 @@ from threading import Thread, Lock
 import time
 from spiderpi_sensors.complementary_filter import ComplementaryFilter
 from spiderpi_sensors.kalman_filter import KalmanFilter
+from scipy.optimize import curve_fit
 
 class IMUFilterNode(Node):
     def __init__(self):
@@ -39,6 +40,12 @@ class IMUFilterNode(Node):
         self.gyroXcal = 0.0
         self.gyroYcal = 0.0
         self.gyroZcal = 0.0
+        
+        # Accel calibration offsets
+        self.accelXcal = 0.0
+        self.accelYcal = 0.0
+        self.accelZcal = 0.0
+        
         self.count = 0
         
         # Queue for storing IMU data
@@ -46,7 +53,7 @@ class IMUFilterNode(Node):
         self.queue_lock = Lock()
 
         # Call the gyro calibration method
-        Thread(target=self.calibrate_gyroscope, args=(100,)).start()
+        Thread(target=self.calibrate_sensors, args=(100,)).start()
 
     def imu_callback(self, msg):
     	# Put IMU message into the queue
@@ -57,7 +64,7 @@ class IMUFilterNode(Node):
             return
     	
         # Extract raw accelerometer and gyroscope data from Imu message
-        accel_data = {'x': msg.linear_acceleration.x, 'y': msg.linear_acceleration.y, 'z': msg.linear_acceleration.z}
+        accel_data = {'x': msg.linear_acceleration.x - self.accelXcal, 'y': msg.linear_acceleration.y - self.accelYcal, 'z': msg.linear_acceleration.z - self.accelZcal}
         gyro_data = {'x': msg.angular_velocity.x - self.gyroXcal, 'y': msg.angular_velocity.y - self.gyroYcal, 'z': msg.angular_velocity.z - self.gyroZcal}
 
         # Use complementary filter to estimate orientation
@@ -172,10 +179,21 @@ class IMUFilterNode(Node):
         self.last_acceleration = accel_global
 
         return velocity
-        
-    def calibrate_gyroscope(self, N: int) -> None:
+    
+    def calibrate_sensors(self, N: int):
         # Display message
-        self.get_logger().info(f"Calibrating gyro with {N} points. Do not move!")
+        self.get_logger().info("Starting sensor calibration. Keep the IMU steady.")
+        
+        # Calibrate gyroscope
+        self.calibrate_gyroscope(N)
+        
+        # Calibrate accelerometer
+        self.calibrate_accelerometer(N)
+
+    def calibrate_gyroscope(self, N: int):
+        # Display message
+        self.get_logger().info("Calibrating gyro. Do not move!")
+        
         while self.count < N:
             try:
                 with self.queue_lock:
@@ -183,33 +201,75 @@ class IMUFilterNode(Node):
                     
                 gyro_data = {'x': msg.angular_velocity.x, 'y': msg.angular_velocity.y, 'z': msg.angular_velocity.z}
                 
+                # Summing all the gyroscope values to be used for calibrating later
                 self.gyroXcal += gyro_data['x']
                 self.gyroYcal += gyro_data['y']
                 self.gyroZcal += gyro_data['z']
                 
                 self.count += 1
-            except Empty:
-                self.get_logger().warn("IMU data queue empty. Calibration interrupted.")
-                time.sleep(0.01)
-            except Exception as e:
-                self.get_logger().error("An error occured. Calibration interrupted.")
-                break
-        		
-        if self.count > 0:
-        	# Calculate average offset value
-        	self.gyroXcal /= self.count
-        	self.gyroYcal /= self.count
-        	self.gyroZcal /= self.count
 
-        	# Display calibration results
-        	self.get_logger().info("Calibration complete")
-        	self.get_logger().info(f"\tX axis offset: {round(self.gyroXcal, 1)}")
-        	self.get_logger().info(f"\tY axis offset: {round(self.gyroYcal, 1)}")
-        	self.get_logger().info(f"\tZ axis offset: {round(self.gyroZcal, 1)}\n")
-        	
-        else:
-        	self.get_logger().warn("No IMU data received for calibration.")
-        	
+            except Empty:
+                self.get_logger().warn("IMU queue is empty, gyro calibration incomplete.")
+                time.sleep(0.01)
+                
+            except Exception as e:
+                self.get_logger().error("An error occured. Calibration stopped.")
+                break
+        
+        # Averaging the number of points taken to get the calibration
+        if self.count > 0:
+            self.gyroXcal /= self.count
+            self.gyroYcal /= self.count
+            self.gyroZcal /= self.count
+        
+        # Inform that the calibration is done
+        self.get_logger().info("Gyro calibration complete.")
+        time.sleep(2)
+
+    def calibrate_accelerometer(self, N: int):
+        # Display message
+        self.get_logger().info("Calibrating accelerometer. Do not move!")
+        
+        accel_x = []
+        accel_y = []
+        accel_z = []
+        
+        while len(accel_x) < N:
+            try:
+                with self.queue_lock:
+                    msg = self.imu_data_queue.get(timeout=1.0)  # Timeout in seconds
+                    
+                accel_x.append(msg.linear_acceleration.x)
+                accel_y.append(msg.linear_acceleration.y)
+                accel_z.append(msg.linear_acceleration.z)
+                
+            except Empty:
+                self.get_logger().warn("IMU queue is empty, accel calibration incomplete.")
+                time.sleep(0.01)
+                
+            except Exception as e:
+                self.get_logger().error("An error occured. Calibration stopped.")
+                break
+        
+        # Convert lists to numpy arrays for easy manipulation
+        accel_x = np.array(accel_x)
+        accel_y = np.array(accel_y)
+        accel_z = np.array(accel_z)
+        
+        # Fit a linear model to determine accelerometer biases (offsets)
+        def linear_model(x, a, b):
+            return a * x + b
+        
+        def fit_calibration_data(data):
+            x_data = np.arange(len(data))
+            popt, _ = curve_fit(linear_model, x_data, data)
+            return popt[1]  # Return the intercept (offset)
+        
+        self.accelXcal = fit_calibration_data(accel_x)
+        self.accelYcal = fit_calibration_data(accel_y)
+        self.accelZcal = fit_calibration_data(accel_z)
+        
+        self.get_logger().info(f"Accelerometer calibration complete. Offsets: X={self.accelXcal}, Y={self.accelYcal}, Z={self.accelZcal}")  
         time.sleep(2)
 
 
