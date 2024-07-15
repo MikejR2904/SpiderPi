@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 class IMUFilterNode(Node):
     def __init__(self):
         super().__init__('imu_filter_node')
-        self.publisher = self.create_publisher(Twist, '/filtered_velocity', 10)
+        self.publisher = self.create_publisher(Imu, '/imu/filtered', 10)
         self.orientation_pub = self.create_publisher(Vector3, '/estimated_orientation', 10)
         self.angular_velocity_pub = self.create_publisher(Vector3, '/estimated_angular_velocity', 10)
         self.linear_velocity_pub = self.create_publisher(Vector3, '/estimated_linear_velocity', 10)
@@ -68,7 +68,8 @@ class IMUFilterNode(Node):
         gyro_data = {'x': msg.angular_velocity.x - self.gyroXcal, 'y': msg.angular_velocity.y - self.gyroYcal, 'z': msg.angular_velocity.z - self.gyroZcal}
 
         # Use complementary filter to estimate orientation
-        dt = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9 - self.last_timestamp if self.last_timestamp else 0.0
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        dt = current_time - self.last_timestamp if self.last_timestamp else 0.0
         orientation_angles = self.complementary_filter.update(accel=accel_data, gyro=gyro_data, dt=dt)
         
         # Convert degrees to radians
@@ -120,14 +121,23 @@ class IMUFilterNode(Node):
         self.get_logger().info(f'Estimated velocity is : {velocity}')
         
         # Update last timestamp
-        self.last_timestamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        self.last_timestamp = current_time
         
-        # Populate Twist message
-        twist_msg = Twist()
-        twist_msg.linear.x = velocity['x']
-        twist_msg.linear.y = velocity['y']
-        twist_msg.linear.z = velocity['z']
-        self.publisher.publish(twist_msg)
+        filtered_msg = Imu()
+        filtered_msg.header = Header()
+        filtered_msg.header.stamp = self.get_clock().now().to_msg()
+
+        filtered_msg.linear_acceleration.x = accel_data['x']
+        filtered_msg.linear_acceleration.y = accel_data['y']
+        filtered_msg.linear_acceleration.z = accel_data['z']
+        
+        filtered_msg.angular_velocity.x = gyro_data['x']
+        filtered_msg.angular_velocity.y = gyro_data['y']
+        filtered_msg.angular_velocity.z = gyro_data['z']
+        
+        filtered_msg.orientation = quaternion
+        
+        self.publisher.publish(filtered_msg)
         
         orientation_msg = Vector3()
         orientation_msg.x = orientation_angles[0]
