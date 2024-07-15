@@ -78,6 +78,22 @@ def generate_launch_description():
             arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'laser'],
     	),
     	
+    	Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='odom2base_link_broadcaster',
+            output='screen',
+            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'base_link'],
+    	),
+    	
+    	Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='odom2imu_link_broadcaster',
+            output='screen',
+            arguments=['0', '0', '0', '0', '0', '0', 'odom', 'imu_link'],
+    	),
+    	
         Node(
             package='rviz2',
             executable='rviz2',
