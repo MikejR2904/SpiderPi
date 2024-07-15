@@ -310,8 +310,8 @@ def main(args = None):
         pass
     finally:
         if rclpy.ok():
-            mpy.destroy_node()
-            rclpy.shut_down()
+            mpu.destroy_node()
+            rclpy.shutdown()
             
 if __name__ == "__main__":
     main()
