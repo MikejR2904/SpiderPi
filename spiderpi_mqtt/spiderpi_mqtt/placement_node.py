@@ -15,7 +15,9 @@ class OdometryUpdater(Node):
         self.current_x = 0
         self.current_y = 0
         self.current_orientation = 0
-        self.prev_time = None
+        self.prev_time = self.get_clock().now().to_msg().sec
+        self.command = None
+        self.command_start_time = None
 
     def parse_response(self, response):
         try:
@@ -35,29 +37,44 @@ class OdometryUpdater(Node):
             return None
 
     def update_odometry(self, movement_direction, rotation, speed, times):
-    	# Compute distance based on speed and times
-    	distance = speed * times
-    	
-    	if movement_direction != 0:
-    		# Compute the new orientation considering rotation
-    		final_orientation = (self.current_orientation + rotation) % 360
-    		
-    		# Compute new position based on movement direction and final orientation
-    		new_x = self.current_x + distance * math.cos(math.radians(final_orientation))
-    		new_y = self.current_y + distance * math.sin(math.radians(final_orientation))
-    		
-    		# Update the position
-    		self.current_x = new_x
-    		self.current_y = new_y
-    		
-    		# Update orientation after moving
-    		self.current_orientation = final_orientation
-    		
-    	else:
-    		# Only rotate without movement
-    		self.current_orientation = (self.current_orientation + rotation) % 360
-    		
-    	self.get_logger().info(f"Updated Position: ({self.current_x}, {self.current_y}), Orientation: {self.current_orientation}")
+        current_time = self.get_clock().now().to_msg().sec
+
+        if self.command is None:
+            self.command = (movement_direction, rotation, speed, times)
+            self.command_start_time = current_time
+            return
+
+        if times == 0:
+            # Continuous command
+            dt = current_time - self.prev_time
+            distance = speed * dt
+        else:
+            # Finite command
+            dt = current_time - self.command_start_time
+            if dt >= times:
+                self.command = None
+                self.prev_time = current_time
+                return
+            distance = speed * dt
+
+        movement_direction, rotation, speed, _ = self.command
+
+        # Update orientation due to rotation
+        new_orientation = (self.current_orientation + rotation * (dt / times)) % 360
+
+        if movement_direction != 0:
+            # Update the position based on the movement direction and current orientation
+            distance_x = distance * math.cos(math.radians(self.current_orientation + movement_direction))
+            distance_y = distance * math.sin(math.radians(self.current_orientation + movement_direction))
+
+            self.current_x += distance_x
+            self.current_y += distance_y
+
+        # Update the orientation
+        self.current_orientation = new_orientation
+
+        self.prev_time = current_time
+        self.get_logger().info(f"Updated Position: ({self.current_x}, {self.current_y}), Orientation: {self.current_orientation}")
 
     def rpc_callback(self, msg):
         response = msg.data
@@ -118,3 +135,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
