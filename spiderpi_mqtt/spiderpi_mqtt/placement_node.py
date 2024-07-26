@@ -35,35 +35,29 @@ class OdometryUpdater(Node):
             return None
 
     def update_odometry(self, movement_direction, rotation, speed, times):
-        if times == 0:
-            # Continuous rotation case
-            if rotation != 0:
-                self.current_orientation = (self.current_orientation + rotation) % 360
-            # No movement, so no distance calculation required
-
-        else:
-            # Compute distance based on speed and times
-            distance = speed * times
-
-            if movement_direction != 0:
-                # Compute the new orientation considering rotation
-                final_orientation = (self.current_orientation + rotation) % 360
-
-                # Compute new position based on movement direction and final orientation
-                new_x = self.current_x + distance * math.cos(math.radians(final_orientation))
-                new_y = self.current_y + distance * math.sin(math.radians(final_orientation))
-                
-                # Update the position
-                self.current_x = new_x
-                self.current_y = new_y
-
-                # Update orientation after moving
-                self.current_orientation = final_orientation
-            else:
-                # Only rotate without movement
-                self.current_orientation = (self.current_orientation + rotation) % 360
-
-        self.get_logger().info(f"Updated Position: ({self.current_x}, {self.current_y}), Orientation: {self.current_orientation}")
+    	# Compute distance based on speed and times
+    	distance = speed * times
+    	
+    	if movement_direction != 0:
+    		# Compute the new orientation considering rotation
+    		final_orientation = (self.current_orientation + rotation) % 360
+    		
+    		# Compute new position based on movement direction and final orientation
+    		new_x = self.current_x + distance * math.cos(math.radians(final_orientation))
+    		new_y = self.current_y + distance * math.sin(math.radians(final_orientation))
+    		
+    		# Update the position
+    		self.current_x = new_x
+    		self.current_y = new_y
+    		
+    		# Update orientation after moving
+    		self.current_orientation = final_orientation
+    		
+    	else:
+    		# Only rotate without movement
+    		self.current_orientation = (self.current_orientation + rotation) % 360
+    		
+    	self.get_logger().info(f"Updated Position: ({self.current_x}, {self.current_y}), Orientation: {self.current_orientation}")
 
     def rpc_callback(self, msg):
         response = msg.data
