@@ -22,5 +22,9 @@ RUN echo "source /opt/ros/melodic/setup.bash" >> ~/.bashrc && \
 # Copy your MQTT node or script
 COPY ./mqtt_publisher.py /root/ws/src/mqtt_publisher.py
 
+# Copy the start script
+COPY ./start.sh /root/start.sh
+RUN chmod +x /root/start.sh
+
 # Define the command to run rplidar and MQTT publisher
-CMD ["bash", "-c", "source /opt/ros/melodic/setup.bash && source /root/ws/devel/setup.bash && roslaunch rplidar_ros rplidar_a1.launch & python3 /root/ws/src/mqtt_publisher.py"]
+CMD ["/root/start.sh"]
