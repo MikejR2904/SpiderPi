@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 export LANG=en_US.UTF-8
 
@@ -58,35 +59,15 @@ sudo systemctl start docker
 
 sleep 10
 
-# Function to build Docker images if not already built
-build_docker_images() {
-    # Check if the rplidar_mqtt image exists
-    if [[ "$(docker images -q rplidar_mqtt 2> /dev/null)" == "" ]]; then
-        echo "Building rplidar_mqtt Docker image..."
-        cd /home/pi/docker_ros
-        sudo docker build -t rplidar_mqtt .
-    fi
-}
+cd /home/pi/docker_ros/
 
-# Function to run Docker containers if not already running
-run_docker_containers() {
-    # Run RPLidar container if not already running
-    if [ ! "$(docker ps -q -f name=rplidar_container)" ]; then
-        if [ "$(docker ps -aq -f status=exited -f name=rplidar_container)" ]; then
-            # Cleanup
-            sudo docker stop rplidar_container
-            sudo docker rm rplidar_container
-        fi
-        echo "Running rplidar_container..."
-        sudo docker run -d --restart unless-stopped --name rplidar_container --device=/dev/ttyUSB0 -p 8883:1883 rplidar_mqtt
-    fi
-}
+sudo docker build -t rplidar_mqtt .
 
-# Build Docker images if needed
-build_docker_images
+echo "Running the script..." >> $LOGFILE
 
-# Run Docker containers
-run_docker_containers
+sudo docker run -it --name rplidar_container --device=/dev/ttyUSB0 -p 8883:1883 rplidar_mqtt
+
+
 
 echo "All services started."
 } >> $LOGFILE 2>&1
