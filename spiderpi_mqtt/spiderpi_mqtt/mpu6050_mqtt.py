@@ -14,7 +14,7 @@ import json
 
 import paho.mqtt.client as mqtt
 
-MQTT_BROKER_ADDRESS = "192.168.111.151"  # Replace with your MQTT broker address
+MQTT_BROKER_ADDRESS = "localhost"  # Replace with your MQTT broker address
 MQTT_BROKER_PORT = 1883  # Default MQTT port
 
 class mpu6050:
